@@ -246,7 +246,7 @@ impl<'a> FieldConversion<'a> {
                 row.required_i64(#field_name)?.try_into().map_err(|_| {
                     ::excelx::ExcelError::InvalidCellType {
                         row: row.row_number(),
-                        column: #field_name.to_owned(),
+                        column: row.header_for_field(#field_name),
                         expected: ::std::stringify!(#ty).to_owned(),
                         found: "integer out of range".to_owned(),
                     }
@@ -273,7 +273,7 @@ impl<'a> FieldConversion<'a> {
                         ::std::option::Option::Some(value.try_into().map_err(|_| {
                             ::excelx::ExcelError::InvalidCellType {
                                 row: row.row_number(),
-                                column: #field_name.to_owned(),
+                                column: row.header_for_field(#field_name),
                                 expected: ::std::stringify!(#ty).to_owned(),
                                 found: "integer out of range".to_owned(),
                             }

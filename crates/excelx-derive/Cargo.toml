@@ -6,7 +6,11 @@ rust-version.workspace = true
 license.workspace = true
 description = "Derive macro for the excelx ExcelRow trait."
 documentation = "https://docs.rs/excelx-derive"
+homepage = "https://github.com/prongbang/excelx-rs"
+repository = "https://github.com/prongbang/excelx-rs"
 readme = "README.md"
+keywords = ["excel", "xlsx", "spreadsheet", "derive"]
+categories = ["development-tools::procedural-macro-helpers"]
 
 [lib]
 proc-macro = true

@@ -2,7 +2,8 @@ use std::io::Cursor;
 
 use calamine::{Reader, Xlsx};
 use excelx::{
-    CellValue, ColumnDef, ExcelError, ExcelRow, RowView, from_xlsx, to_xlsx, validate_columns,
+    CellValue, ColumnDef, ExcelError, ExcelRow, ReadLimits, RowView, XLSX_MAX_COLUMNS,
+    XLSX_MAX_ROWS, from_xlsx, from_xlsx_with_limits, to_xlsx, validate_columns,
 };
 
 #[derive(Debug, PartialEq)]
@@ -307,4 +308,111 @@ fn empty_workbook_bytes_return_parse_error() {
     let error = from_xlsx::<Person>(&[]).expect_err("empty workbook bytes");
 
     assert!(matches!(error, ExcelError::Parse(_)));
+}
+
+#[test]
+fn read_limits_reject_too_many_data_rows() {
+    let people = vec![
+        Person {
+            id: 1,
+            name: "Ada".to_owned(),
+            active: true,
+            score: 98.5,
+        },
+        Person {
+            id: 2,
+            name: "Grace".to_owned(),
+            active: false,
+            score: 88.0,
+        },
+    ];
+    let bytes = to_xlsx(&people).expect("write workbook");
+
+    let error = from_xlsx_with_limits::<Person>(
+        &bytes,
+        excelx::SheetRef::Index(0),
+        ReadLimits::new().max_rows(1),
+    )
+    .expect_err("row limit");
+
+    assert!(
+        matches!(error, ExcelError::LimitExceeded(message) if message.contains("configured max is 1"))
+    );
+}
+
+#[test]
+fn read_limits_reject_too_many_schema_columns() {
+    let bytes = to_xlsx(&[Person {
+        id: 1,
+        name: "Ada".to_owned(),
+        active: true,
+        score: 98.5,
+    }])
+    .expect("write workbook");
+
+    let error = from_xlsx_with_limits::<Person>(
+        &bytes,
+        excelx::SheetRef::Index(0),
+        ReadLimits::new().max_columns(3),
+    )
+    .expect_err("column limit");
+
+    assert!(
+        matches!(error, ExcelError::LimitExceeded(message) if message.contains("configured max is 3"))
+    );
+}
+
+#[test]
+fn write_rejects_more_rows_than_xlsx_supports() {
+    #[derive(Clone, Copy)]
+    struct Tiny;
+
+    impl ExcelRow for Tiny {
+        fn columns() -> Vec<ColumnDef> {
+            vec![ColumnDef::new("id", "ID", 1)]
+        }
+
+        fn to_row(&self) -> Vec<CellValue> {
+            vec![CellValue::Int(1)]
+        }
+
+        fn from_row(_: &RowView) -> Result<Self, ExcelError> {
+            Ok(Self)
+        }
+    }
+
+    let rows = vec![Tiny; XLSX_MAX_ROWS];
+    let error = to_xlsx(&rows).expect_err("row limit");
+
+    assert!(matches!(error, ExcelError::LimitExceeded(message) if message.contains("data rows")));
+}
+
+#[test]
+fn write_rejects_more_columns_than_xlsx_supports() {
+    struct Wide;
+
+    impl ExcelRow for Wide {
+        fn columns() -> Vec<ColumnDef> {
+            (0..=XLSX_MAX_COLUMNS)
+                .map(|index| {
+                    let field: &'static str = Box::leak(format!("field_{index}").into_boxed_str());
+                    let header: &'static str =
+                        Box::leak(format!("Header {index}").into_boxed_str());
+                    ColumnDef::new(field, header, index)
+                })
+                .collect()
+        }
+
+        fn to_row(&self) -> Vec<CellValue> {
+            Vec::new()
+        }
+
+        fn from_row(_: &RowView) -> Result<Self, ExcelError> {
+            Ok(Self)
+        }
+    }
+
+    let error = to_xlsx(&[Wide]).expect_err("column limit");
+
+    assert!(matches!(error, ExcelError::LimitExceeded(message) if message.contains("columns")));
 }

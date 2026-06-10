@@ -52,3 +52,34 @@ jobs:
 
       - name: Dry-run excelx-derive
         run: cargo publish --dry-run -p excelx-derive
+
+  libreoffice-compatibility:
+    name: LibreOffice compatibility
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install LibreOffice
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libreoffice-calc
+
+      - name: Create LibreOffice XLSX fixture
+        run: |
+          mkdir -p target/compat-fixtures/csv target/compat-fixtures/xlsx
+          printf 'ID,Name,Active,Score\n1,Ada,true,98.5\n2,Grace,false,88\n' \
+            > target/compat-fixtures/csv/compat.csv
+          libreoffice --headless --convert-to xlsx --outdir target/compat-fixtures/xlsx \
+            target/compat-fixtures/csv/compat.csv
+
+      - name: Run compatibility test
+        run: cargo test -p excelx --test compatibility_workbooks
+        env:
+          EXCELX_COMPAT_FIXTURE_DIR: target/compat-fixtures/xlsx

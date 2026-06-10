@@ -72,6 +72,14 @@ impl RowView {
         self.values_by_header.get(header)
     }
 
+    pub fn header_for_field(&self, field: &str) -> String {
+        self.headers_by_field
+            .get(field)
+            .copied()
+            .unwrap_or(field)
+            .to_owned()
+    }
+
     pub fn required_string(&self, field: &str) -> Result<String, ExcelError> {
         match self.value_or_default(field)? {
             FieldValue::Default(value) => Ok(value.to_owned()),
@@ -201,14 +209,6 @@ impl RowView {
             expected: expected.to_owned(),
             value: value.to_owned(),
         }
-    }
-
-    fn header_for_field(&self, field: &str) -> String {
-        self.headers_by_field
-            .get(field)
-            .copied()
-            .unwrap_or(field)
-            .to_owned()
     }
 }
 

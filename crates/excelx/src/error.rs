@@ -34,6 +34,9 @@ pub enum ExcelError {
     #[error("parse error: {0}")]
     Parse(String),
 
+    #[error("limit exceeded: {0}")]
+    LimitExceeded(String),
+
     #[error("write error: {0}")]
     Write(String),
 

@@ -99,6 +99,29 @@ let all_sheets = from_xlsx_multi::<Person>(&bytes)?;
 # Ok::<(), ExcelError>(())
 ```
 
+## Safety Limits
+
+When parsing user-uploaded or otherwise untrusted workbooks, use explicit read
+limits so unexpectedly large files fail before they consume too much memory:
+
+```rust
+use excelx::{ReadLimits, SheetRef, from_xlsx_with_limits};
+
+let rows = from_xlsx_with_limits::<Person>(
+    &bytes,
+    SheetRef::Index(0),
+    ReadLimits::new().max_rows(10_000).max_columns(64),
+)?;
+# let _ = rows;
+# Ok::<(), ExcelError>(())
+```
+
+For homogeneous multi-sheet imports, use `MultiSheetReadLimits` with
+`from_xlsx_multi_with_limits()`.
+
+Writes are also checked against the XLSX worksheet limits of 1,048,576 rows
+including the header row and 16,384 columns.
+
 ## Derive Macro
 
 Add `excelx-derive` next to `excelx`, then derive the trait with field

@@ -15,8 +15,10 @@ mod write;
 pub use column::{ColumnDef, validate_columns};
 pub use error::ExcelError;
 pub use read::{
-    ParsedSheet, ReadOptions, SheetRef, from_reader, from_reader_multi, from_reader_with_options,
-    from_xlsx, from_xlsx_multi, from_xlsx_sheet, from_xlsx_with_options,
+    MultiSheetReadLimits, ParsedSheet, ReadLimits, ReadOptions, SheetRef, XLSX_MAX_COLUMNS,
+    XLSX_MAX_ROWS, from_reader, from_reader_multi, from_reader_multi_with_limits,
+    from_reader_with_limits, from_reader_with_options, from_xlsx, from_xlsx_multi,
+    from_xlsx_multi_with_limits, from_xlsx_sheet, from_xlsx_with_limits, from_xlsx_with_options,
 };
 pub use row::{ExcelRow, RowView};
 pub use sheet::{SheetData, SheetOptions};

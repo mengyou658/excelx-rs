@@ -1,4 +1,4 @@
-use excelx::{ColumnDef, ExcelRow, from_xlsx, to_xlsx};
+use excelx::{CellValue, ColumnDef, ExcelError, ExcelRow, RowView, from_xlsx, to_xlsx};
 
 #[derive(Debug, PartialEq, excelx_derive::ExcelRow)]
 struct DerivedPerson {
@@ -77,4 +77,43 @@ fn derive_applies_defaults_for_empty_cells() {
             nickname: Some("N/A".to_owned()),
         }]
     );
+}
+
+#[test]
+fn derive_integer_range_errors_use_visible_header() {
+    #[derive(Debug)]
+    struct Source;
+
+    impl ExcelRow for Source {
+        fn columns() -> Vec<ColumnDef> {
+            vec![ColumnDef::new("id", "Small ID", 1)]
+        }
+
+        fn to_row(&self) -> Vec<CellValue> {
+            vec![CellValue::Int(300)]
+        }
+
+        fn from_row(_: &RowView) -> Result<Self, ExcelError> {
+            Ok(Self)
+        }
+    }
+
+    #[derive(Debug, PartialEq, excelx_derive::ExcelRow)]
+    struct Target {
+        #[excel(header = "Small ID", order = 1)]
+        id: u8,
+    }
+
+    let bytes = to_xlsx(&[Source]).expect("write workbook");
+    let error = from_xlsx::<Target>(&bytes).expect_err("range error");
+
+    assert!(matches!(
+        error,
+        ExcelError::InvalidCellType {
+            row: 2,
+            column,
+            expected,
+            found,
+        } if column == "Small ID" && expected == "u8" && found == "integer out of range"
+    ));
 }

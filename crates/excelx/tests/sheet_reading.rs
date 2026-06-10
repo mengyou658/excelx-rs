@@ -1,9 +1,9 @@
 use std::io::Cursor;
 
 use excelx::{
-    CellValue, ColumnDef, ExcelError, ExcelRow, ParsedSheet, ReadOptions, RowView, SheetData,
-    SheetRef, from_reader_with_options, from_xlsx_multi, from_xlsx_sheet, from_xlsx_with_options,
-    to_xlsx_multi,
+    CellValue, ColumnDef, ExcelError, ExcelRow, MultiSheetReadLimits, ParsedSheet, ReadOptions,
+    RowView, SheetData, SheetRef, from_reader_with_options, from_xlsx_multi,
+    from_xlsx_multi_with_limits, from_xlsx_sheet, from_xlsx_with_options, to_xlsx_multi,
 };
 
 #[derive(Debug, PartialEq)]
@@ -101,6 +101,32 @@ fn reads_all_sheets_as_same_row_type() {
             ParsedSheet::new("Archive", vec![Person::new(2, "Grace")]),
             ParsedSheet::new("Review", vec![Person::new(3, "Katherine")]),
         ]
+    );
+}
+
+#[test]
+fn multi_sheet_limits_reject_too_many_sheets() {
+    let bytes = multi_sheet_workbook();
+    let error =
+        from_xlsx_multi_with_limits::<Person>(&bytes, MultiSheetReadLimits::new().max_sheets(2))
+            .expect_err("sheet limit");
+
+    assert!(
+        matches!(error, ExcelError::LimitExceeded(message) if message.contains("configured max is 2"))
+    );
+}
+
+#[test]
+fn multi_sheet_limits_reject_too_many_rows_per_sheet() {
+    let bytes = multi_sheet_workbook();
+    let error = from_xlsx_multi_with_limits::<Person>(
+        &bytes,
+        MultiSheetReadLimits::new().max_rows_per_sheet(0),
+    )
+    .expect_err("row limit");
+
+    assert!(
+        matches!(error, ExcelError::LimitExceeded(message) if message.contains("configured max is 0"))
     );
 }
 

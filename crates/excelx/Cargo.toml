@@ -6,7 +6,11 @@ rust-version.workspace = true
 license.workspace = true
 description = "Type-safe XLSX read/write helpers for Rust structs."
 documentation = "https://docs.rs/excelx"
+homepage = "https://github.com/prongbang/excelx-rs"
+repository = "https://github.com/prongbang/excelx-rs"
 readme = "README.md"
+keywords = ["excel", "xlsx", "spreadsheet", "calamine"]
+categories = ["encoding", "parser-implementations"]
 
 [dependencies]
 calamine = "0.34"

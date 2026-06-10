@@ -2,7 +2,9 @@ use std::collections::HashSet;
 
 use rust_xlsxwriter::{Workbook, Worksheet};
 
-use crate::{CellValue, ExcelError, ExcelRow, SheetData, validate_columns};
+use crate::{
+    CellValue, ExcelError, ExcelRow, SheetData, XLSX_MAX_COLUMNS, XLSX_MAX_ROWS, validate_columns,
+};
 
 /// Convert a slice of row values into a single-sheet XLSX workbook.
 pub fn to_xlsx<T: ExcelRow>(data: &[T]) -> Result<Vec<u8>, ExcelError> {
@@ -38,6 +40,7 @@ fn write_rows_to_worksheet<T: ExcelRow>(
 ) -> Result<(), ExcelError> {
     let columns = T::columns();
     let sorted_columns = validate_columns(&columns)?;
+    validate_worksheet_size(data.len(), sorted_columns.len())?;
 
     for (write_col, column) in sorted_columns.iter().enumerate() {
         worksheet.write_string(0, as_col(write_col)?, column.header)?;
@@ -68,6 +71,23 @@ fn write_rows_to_worksheet<T: ExcelRow>(
                 &values[schema_index],
             )?;
         }
+    }
+
+    Ok(())
+}
+
+fn validate_worksheet_size(row_count: usize, column_count: usize) -> Result<(), ExcelError> {
+    let max_data_rows = XLSX_MAX_ROWS - 1;
+    if row_count > max_data_rows {
+        return Err(ExcelError::LimitExceeded(format!(
+            "worksheet has {row_count} data rows but XLSX supports at most {max_data_rows}"
+        )));
+    }
+
+    if column_count > XLSX_MAX_COLUMNS {
+        return Err(ExcelError::LimitExceeded(format!(
+            "worksheet has {column_count} columns but XLSX supports at most {XLSX_MAX_COLUMNS}"
+        )));
     }
 
     Ok(())
@@ -115,11 +135,23 @@ fn write_cell(
 }
 
 fn as_row(value: usize) -> Result<u32, ExcelError> {
+    if value >= XLSX_MAX_ROWS {
+        return Err(ExcelError::Write(format!(
+            "row index {value} exceeds XLSX limits"
+        )));
+    }
+
     u32::try_from(value)
         .map_err(|_| ExcelError::Write(format!("row index {value} exceeds XLSX limits")))
 }
 
 fn as_col(value: usize) -> Result<u16, ExcelError> {
+    if value >= XLSX_MAX_COLUMNS {
+        return Err(ExcelError::Write(format!(
+            "column index {value} exceeds XLSX limits"
+        )));
+    }
+
     u16::try_from(value)
         .map_err(|_| ExcelError::Write(format!("column index {value} exceeds XLSX limits")))
 }
