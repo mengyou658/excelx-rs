@@ -19,6 +19,20 @@ proc-macro = true
 proc-macro2 = "1"
 quote = "1"
 syn = { version = "2", features = ["full"] }
+# Used only for feature forwarding. The derive macro never references
+# `excelx` items at runtime; it generates code that the consumer's crate
+# invokes.
+excelx = { path = "../excelx", default-features = false, optional = true }
+
+[features]
+default = []
+# Enable support for `chrono::NaiveDateTime`, `chrono::NaiveDate`, and
+# `chrono::NaiveTime` field types. The same feature must be enabled on the
+# `excelx` crate at the consumer site.
+chrono = ["dep:excelx", "excelx/chrono"]
+# Enable support for the `rust_decimal::Decimal` field type. The same feature
+# must be enabled on the `excelx` crate at the consumer site.
+decimal = ["dep:excelx", "excelx/decimal"]
 
 [dev-dependencies]
 trybuild = "1"

@@ -16,3 +16,13 @@ categories = ["encoding", "parser-implementations"]
 calamine = "0.34"
 rust_xlsxwriter = "0.94"
 thiserror = "2"
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"], optional = true }
+rust_decimal = { version = "1", features = ["std"], optional = true }
+
+[features]
+default = []
+# Enables support for `chrono::NaiveDateTime`, `chrono::NaiveDate`, and
+# `chrono::NaiveTime` cell values (MySQL DATETIME / TIMESTAMP / DATE / TIME).
+chrono = ["dep:chrono"]
+# Enables support for `rust_decimal::Decimal` cell values (MySQL DECIMAL).
+decimal = ["dep:rust_decimal"]

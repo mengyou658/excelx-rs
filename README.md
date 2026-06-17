@@ -145,6 +145,98 @@ The initial macro release supports named structs with `String`,
 `Option<String>`, supported integer types, `f32`/`f64`, `bool`, and optional
 scalar fields.
 
+### Deep Field Access
+
+A field whose Rust type is not a built-in scalar (for example
+`Option<MemberUser>`) can be projected to a nested field with the `value`
+attribute. The path is dot-separated and must start with the field name.
+`to_row()` unwraps `Option<T>` and walks the rest of the path, converting
+the final value to a `CellValue::String` via `Display` (so the leaf type
+must implement `std::fmt::Display`). A `None` produces `CellValue::Empty`.
+
+```rust
+#[derive(excelx_derive::ExcelRow)]
+struct Order {
+    #[excel(header = "ID", order = 1)]
+    id: i64,
+    #[excel(header = "User Name", order = 2, value = "user.name")]
+    user: Option<MemberUser>,
+}
+```
+
+The matching `from_row()` cannot reconstruct the custom type automatically,
+so the macro initializes such fields with `Default::default()`. If you need
+to read the field back from a workbook, implement `ExcelRow::from_row` for
+the row type manually.
+
+### Async Parse Helper
+
+To plug a custom async resolver (for example, a dict label lookup) into the
+write path, set `value_parse_fn` to a function-call expression. The macro
+generates a public `async fn value_parse_fn_<field>(&self, value: &FieldType)`
+on the struct. Inside the call, the field name is replaced with the `value`
+parameter and `self` refers to the entity. The function's return value is
+awaited and converted to `String` via `Display`, so it can be used as the
+cell value.
+
+```rust
+async fn get_dict_label(
+    dict_type: &str,
+    value: &Option<MemberUser>,
+    entity: &Order,
+) -> String {
+    // ...
+}
+
+#[derive(excelx_derive::ExcelRow)]
+struct Order {
+    #[excel(header = "ID", order = 1)]
+    id: i64,
+    #[excel(
+        header = "Refund At",
+        order = 2,
+        value = "user.name",
+        value_parse_fn = "get_dict_label(\"refund_at\", user, self)",
+    )]
+    user: Option<MemberUser>,
+}
+```
+
+When `value_parse_fn` is set the `value` attribute is ignored: the cell
+is left `Empty` and the field is initialized with `Default::default()`
+during `from_row()`. The actual displayable value is produced by the
+generated async helper, which the caller invokes separately.
+
+### Supported Field Types
+
+The derive macro recognises the following field types out of the box:
+
+| Rust type                              | Cell variant           | Feature flag   |
+|----------------------------------------|------------------------|----------------|
+| `String`                               | `String`               | -              |
+| `i8`, `i16`, `i32`, `i64`              | `Int`                  | -              |
+| `u8`, `u16`, `u32`                     | `Int` (range-checked)  | -              |
+| `f32`, `f64`                           | `Float`                | -              |
+| `bool`                                 | `Bool`                 | -              |
+| `Vec<u8>`                              | `Bytes`                | -              |
+| `Vec<String>`                          | `StringList`           | -              |
+| `rust_decimal::Decimal`                | `Decimal`              | `decimal`      |
+| `chrono::NaiveDateTime`                | `DateTime`             | `chrono`       |
+| `chrono::NaiveDate`                    | `Date`                 | `chrono`       |
+| `chrono::NaiveTime`                    | `Time`                 | `chrono`       |
+
+`chrono` and `decimal` types are gated behind cargo features. To use them,
+enable the matching feature on both `excelx` and `excelx-derive`:
+
+```toml
+[dependencies]
+excelx = { version = "0.4", features = ["chrono", "decimal"] }
+excelx-derive = { version = "0.4", features = ["chrono", "decimal"] }
+```
+
+Enabling the derive feature without the corresponding `excelx` feature
+fails with a compile error pointing at the offending field.
+
 ## Limitations
 
 `excelx` is intentionally small. Current limitations:
@@ -157,8 +249,9 @@ scalar fields.
   point values by Excel. Very large integers can lose precision.
 * Defaults apply during parse when a required header exists and the cell is
   empty. Defaults are not applied when a header is missing.
-* Date/time cells, formulas, styles, streaming large files, and custom number
-  formats are out of scope for this release.
+* Date/time cells are written as ISO 8601 strings so they round-trip without
+  locale ambiguity. Formulas, styles, streaming large files, and custom
+  number formats are out of scope for this release.
 * The derive crate supports named structs only.
 
 ## Compatibility Fixtures

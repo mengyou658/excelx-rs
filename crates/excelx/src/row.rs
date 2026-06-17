@@ -157,6 +157,149 @@ impl RowView {
         }
     }
 
+    #[cfg(feature = "decimal")]
+    pub fn required_decimal(&self, field: &str) -> Result<rust_decimal::Decimal, ExcelError> {
+        match self.value_or_default(field)? {
+            FieldValue::Default(value) => self.parse_default_decimal(field, value),
+            FieldValue::Cell(CellValue::Decimal(value)) => Ok(*value),
+            FieldValue::Cell(CellValue::String(value)) => {
+                value.trim().parse().map_err(|_| {
+                    self.invalid_type(field, "decimal", &CellValue::String(value.clone()))
+                })
+            }
+            FieldValue::Cell(value) => Err(self.invalid_type(field, "decimal", value)),
+        }
+    }
+
+    #[cfg(feature = "decimal")]
+    pub fn optional_decimal(
+        &self,
+        field: &str,
+    ) -> Result<Option<rust_decimal::Decimal>, ExcelError> {
+        match self.value_or_default(field)? {
+            FieldValue::Default(value) => self.parse_default_decimal(field, value).map(Some),
+            FieldValue::Cell(CellValue::Empty) => Ok(None),
+            _ => self.required_decimal(field).map(Some),
+        }
+    }
+
+    #[cfg(feature = "chrono")]
+    pub fn required_datetime(
+        &self,
+        field: &str,
+    ) -> Result<chrono::NaiveDateTime, ExcelError> {
+        match self.value_or_default(field)? {
+            FieldValue::Default(value) => self.parse_default_datetime(field, value),
+            FieldValue::Cell(CellValue::DateTime(value)) => Ok(*value),
+            FieldValue::Cell(CellValue::String(value)) => parse_naive_datetime(value)
+                .ok_or_else(|| self.invalid_type(field, "datetime", &CellValue::String(value.clone()))),
+            FieldValue::Cell(value) => Err(self.invalid_type(field, "datetime", value)),
+        }
+    }
+
+    #[cfg(feature = "chrono")]
+    pub fn optional_datetime(
+        &self,
+        field: &str,
+    ) -> Result<Option<chrono::NaiveDateTime>, ExcelError> {
+        match self.value_or_default(field)? {
+            FieldValue::Default(value) => self.parse_default_datetime(field, value).map(Some),
+            FieldValue::Cell(CellValue::Empty) => Ok(None),
+            _ => self.required_datetime(field).map(Some),
+        }
+    }
+
+    #[cfg(feature = "chrono")]
+    pub fn required_date(&self, field: &str) -> Result<chrono::NaiveDate, ExcelError> {
+        match self.value_or_default(field)? {
+            FieldValue::Default(value) => self.parse_default_date(field, value),
+            FieldValue::Cell(CellValue::Date(value)) => Ok(*value),
+            FieldValue::Cell(CellValue::String(value)) => {
+                chrono::NaiveDate::parse_from_str(value.trim(), "%Y-%m-%d").map_err(|_| {
+                    self.invalid_type(field, "date", &CellValue::String(value.clone()))
+                })
+            }
+            FieldValue::Cell(value) => Err(self.invalid_type(field, "date", value)),
+        }
+    }
+
+    #[cfg(feature = "chrono")]
+    pub fn optional_date(
+        &self,
+        field: &str,
+    ) -> Result<Option<chrono::NaiveDate>, ExcelError> {
+        match self.value_or_default(field)? {
+            FieldValue::Default(value) => self.parse_default_date(field, value).map(Some),
+            FieldValue::Cell(CellValue::Empty) => Ok(None),
+            _ => self.required_date(field).map(Some),
+        }
+    }
+
+    #[cfg(feature = "chrono")]
+    pub fn required_time(&self, field: &str) -> Result<chrono::NaiveTime, ExcelError> {
+        match self.value_or_default(field)? {
+            FieldValue::Default(value) => self.parse_default_time(field, value),
+            FieldValue::Cell(CellValue::Time(value)) => Ok(*value),
+            FieldValue::Cell(CellValue::String(value)) => parse_naive_time(value).ok_or_else(|| {
+                self.invalid_type(field, "time", &CellValue::String(value.clone()))
+            }),
+            FieldValue::Cell(value) => Err(self.invalid_type(field, "time", value)),
+        }
+    }
+
+    #[cfg(feature = "chrono")]
+    pub fn optional_time(
+        &self,
+        field: &str,
+    ) -> Result<Option<chrono::NaiveTime>, ExcelError> {
+        match self.value_or_default(field)? {
+            FieldValue::Default(value) => self.parse_default_time(field, value).map(Some),
+            FieldValue::Cell(CellValue::Empty) => Ok(None),
+            _ => self.required_time(field).map(Some),
+        }
+    }
+
+    pub fn required_bytes(&self, field: &str) -> Result<Vec<u8>, ExcelError> {
+        match self.value_or_default(field)? {
+            FieldValue::Cell(CellValue::Bytes(value)) => Ok(value.clone()),
+            FieldValue::Cell(CellValue::String(value)) => parse_bytes(value).ok_or_else(|| {
+                self.invalid_type(field, "bytes", &CellValue::String(value.clone()))
+            }),
+            FieldValue::Default(_) | FieldValue::Cell(CellValue::Empty) => Err(self.invalid_type(
+                field,
+                "bytes",
+                &CellValue::Empty,
+            )),
+            FieldValue::Cell(value) => Err(self.invalid_type(field, "bytes", value)),
+        }
+    }
+
+    pub fn optional_bytes(&self, field: &str) -> Result<Option<Vec<u8>>, ExcelError> {
+        match self.value_or_default(field)? {
+            FieldValue::Cell(CellValue::Empty) => Ok(None),
+            _ => self.required_bytes(field).map(Some),
+        }
+    }
+
+    pub fn required_string_list(&self, field: &str) -> Result<Vec<String>, ExcelError> {
+        match self.value_or_default(field)? {
+            FieldValue::Cell(CellValue::StringList(value)) => Ok(value.clone()),
+            FieldValue::Cell(CellValue::String(value)) => Ok(split_string_list(value)),
+            FieldValue::Default(value) => Ok(split_string_list(value)),
+            FieldValue::Cell(value) => Err(self.invalid_type(field, "string-list", value)),
+        }
+    }
+
+    pub fn optional_string_list(
+        &self,
+        field: &str,
+    ) -> Result<Option<Vec<String>>, ExcelError> {
+        match self.value_or_default(field)? {
+            FieldValue::Cell(CellValue::Empty) => Ok(None),
+            _ => self.required_string_list(field).map(Some),
+        }
+    }
+
     fn value_or_default(&self, field: &str) -> Result<FieldValue<'_>, ExcelError> {
         match self.required_value(field)? {
             CellValue::Empty => Ok(self
@@ -193,6 +336,47 @@ impl RowView {
         parse_bool(value).ok_or_else(|| self.invalid_default(field, "boolean", value))
     }
 
+    #[cfg(feature = "decimal")]
+    fn parse_default_decimal(
+        &self,
+        field: &str,
+        value: &str,
+    ) -> Result<rust_decimal::Decimal, ExcelError> {
+        value
+            .trim()
+            .parse()
+            .map_err(|_| self.invalid_default(field, "decimal", value))
+    }
+
+    #[cfg(feature = "chrono")]
+    fn parse_default_datetime(
+        &self,
+        field: &str,
+        value: &str,
+    ) -> Result<chrono::NaiveDateTime, ExcelError> {
+        parse_naive_datetime(value)
+            .ok_or_else(|| self.invalid_default(field, "datetime", value))
+    }
+
+    #[cfg(feature = "chrono")]
+    fn parse_default_date(
+        &self,
+        field: &str,
+        value: &str,
+    ) -> Result<chrono::NaiveDate, ExcelError> {
+        chrono::NaiveDate::parse_from_str(value.trim(), "%Y-%m-%d")
+            .map_err(|_| self.invalid_default(field, "date", value))
+    }
+
+    #[cfg(feature = "chrono")]
+    fn parse_default_time(
+        &self,
+        field: &str,
+        value: &str,
+    ) -> Result<chrono::NaiveTime, ExcelError> {
+        parse_naive_time(value).ok_or_else(|| self.invalid_default(field, "time", value))
+    }
+
     fn invalid_type(&self, field: &str, expected: &str, found: &CellValue) -> ExcelError {
         ExcelError::InvalidCellType {
             row: self.row_number,
@@ -218,4 +402,49 @@ fn parse_bool(value: &str) -> Option<bool> {
         "false" => Some(false),
         _ => None,
     }
+}
+
+#[cfg(feature = "chrono")]
+fn parse_naive_datetime(value: &str) -> Option<chrono::NaiveDateTime> {
+    let trimmed = value.trim();
+    chrono::NaiveDateTime::parse_from_str(trimmed, "%Y-%m-%dT%H:%M:%S%.f")
+        .or_else(|_| chrono::NaiveDateTime::parse_from_str(trimmed, "%Y-%m-%dT%H:%M:%S"))
+        .or_else(|_| chrono::NaiveDateTime::parse_from_str(trimmed, "%Y-%m-%d %H:%M:%S%.f"))
+        .or_else(|_| chrono::NaiveDateTime::parse_from_str(trimmed, "%Y-%m-%d %H:%M:%S"))
+        .or_else(|_| chrono::NaiveDateTime::parse_from_str(trimmed, "%F %T"))
+        .ok()
+}
+
+#[cfg(feature = "chrono")]
+fn parse_naive_time(value: &str) -> Option<chrono::NaiveTime> {
+    let trimmed = value.trim();
+    chrono::NaiveTime::parse_from_str(trimmed, "%H:%M:%S%.f")
+        .or_else(|_| chrono::NaiveTime::parse_from_str(trimmed, "%H:%M:%S"))
+        .or_else(|_| chrono::NaiveTime::parse_from_str(trimmed, "%H:%M"))
+        .ok()
+}
+
+/// Parse a byte list stringified by [`format_bytes`]. The string must start
+/// with `[` and end with `]`. Whitespace around bytes is allowed.
+fn parse_bytes(value: &str) -> Option<Vec<u8>> {
+    let trimmed = value.trim();
+    let inner = trimmed.strip_prefix('[')?.strip_suffix(']')?;
+    if inner.trim().is_empty() {
+        return Some(Vec::new());
+    }
+    inner
+        .split(',')
+        .map(|part| part.trim().parse::<u8>().ok())
+        .collect()
+}
+
+/// Split a comma-separated string list. Empty entries are dropped, and the
+/// members are trimmed.
+fn split_string_list(value: &str) -> Vec<String> {
+    value
+        .split(',')
+        .map(|part| part.trim())
+        .filter(|part| !part.is_empty())
+        .map(|part| part.to_owned())
+        .collect()
 }

@@ -6,5 +6,7 @@ rust-version.workspace = true
 publish = false
 
 [dependencies]
-excelx = { path = "../excelx" }
-excelx-derive = { path = "../excelx-derive" }
+excelx = { path = "../excelx", features = ["chrono", "decimal"] }
+excelx-derive = { path = "../excelx-derive", features = ["chrono", "decimal"] }
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
+rust_decimal = { version = "1", features = ["std"] }

@@ -1,5 +1,5 @@
 error: unsupported ExcelRow field type
  --> tests/ui/unsupported_type.rs:6:11
   |
-6 |     tags: Vec<String>,
-  |           ^^^^^^^^^^^
+6 |     tags: std::collections::HashMap<String, String>,
+  |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

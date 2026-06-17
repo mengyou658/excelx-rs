@@ -129,9 +129,51 @@ fn write_cell(
             worksheet.write_boolean(row, col, *value)?;
         }
         CellValue::Empty => {}
+        // Decimals keep full precision through their string form.
+        #[cfg(feature = "decimal")]
+        CellValue::Decimal(value) => {
+            worksheet.write_string(row, col, value.to_string())?;
+        }
+        // Date/time/date/time cells are written as ISO 8601 strings so the
+        // value is unambiguous when round-tripped.
+        #[cfg(feature = "chrono")]
+        CellValue::DateTime(value) => {
+            worksheet.write_string(row, col, &value.format("%Y-%m-%dT%H:%M:%S%.f").to_string())?;
+        }
+        #[cfg(feature = "chrono")]
+        CellValue::Date(value) => {
+            worksheet.write_string(row, col, &value.format("%Y-%m-%d").to_string())?;
+        }
+        #[cfg(feature = "chrono")]
+        CellValue::Time(value) => {
+            worksheet.write_string(row, col, &value.format("%H:%M:%S%.f").to_string())?;
+        }
+        // Binary data is stored as a stringified byte list to keep the cell
+        // human-readable in spreadsheet tools.
+        CellValue::Bytes(value) => {
+            worksheet.write_string(row, col, &format_bytes(value))?;
+        }
+        // String lists are joined with a comma so they round-trip through a
+        // single cell without losing members.
+        CellValue::StringList(value) => {
+            worksheet.write_string(row, col, &value.join(","))?;
+        }
     }
 
     Ok(())
+}
+
+fn format_bytes(bytes: &[u8]) -> String {
+    let mut out = String::with_capacity(bytes.len() * 2 + 2);
+    out.push('[');
+    for (index, byte) in bytes.iter().enumerate() {
+        if index > 0 {
+            out.push_str(", ");
+        }
+        out.push_str(&format!("{byte}"));
+    }
+    out.push(']');
+    out
 }
 
 fn as_row(value: usize) -> Result<u32, ExcelError> {
