@@ -222,7 +222,7 @@ checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
 
 [[package]]
 name = "excelx"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "calamine",
  "chrono",
@@ -233,7 +233,7 @@ dependencies = [
 
 [[package]]
 name = "excelx-derive"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "excelx",
  "proc-macro2",
@@ -244,7 +244,7 @@ dependencies = [
 
 [[package]]
 name = "excelx-examples"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "excelx",
  "excelx-derive",
@@ -252,7 +252,7 @@ dependencies = [
 
 [[package]]
 name = "excelx-integration-tests"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "chrono",
  "excelx",
